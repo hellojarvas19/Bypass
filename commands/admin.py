@@ -9,7 +9,8 @@ import json
 logger = logging.getLogger(__name__)
 router = Router()
 
-from config import OWNER_ID, PREMIUM_USERS, BOT_TOKEN, ADMIN_IDS
+from config import OWNER_ID, PREMIUM_USERS, BOT_TOKEN, ADMIN_IDS, USER_STATS
+from datetime import datetime
 
 bot = Bot(token=BOT_TOKEN)
 
@@ -256,5 +257,42 @@ async def add_adm_handler(msg: Message):
             parse_mode=ParseMode.HTML
         )
 
+@router.message(Command("stats"))
+async def stats_handler(msg: Message):
+    if msg.from_user.id != OWNER_ID and msg.from_user.id not in ADMIN_IDS:
+        await msg.answer(
+            "<blockquote><code>𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗢𝗻𝗹𝘆 𝗔𝗱𝗺𝗶𝗻𝘀 𝗖𝗮𝗻 𝗨𝘀𝗲 𝗧𝗵𝗶𝘀</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    total_users = len(USER_STATS)
+    total_checkouts = sum(u["checkouts"] for u in USER_STATS.values())
+    total_charged = sum(u["charged"] for u in USER_STATS.values())
+    
+    # Get top 5 users by checkouts
+    top_users = sorted(USER_STATS.items(), key=lambda x: x[1]["checkouts"], reverse=True)[:5]
+    
+    response = "<blockquote><code>𝗕𝗼𝘁 𝗦𝘁𝗮𝘁𝗶𝘀𝘁𝗶𝗰𝘀 📊</code></blockquote>\n\n"
+    response += f"<blockquote>「❃」 𝗧𝗼𝘁𝗮𝗹 𝗨𝘀𝗲𝗿𝘀 : <code>{total_users}</code>\n"
+    response += f"「❃」 𝗧𝗼𝘁𝗮𝗹 𝗖𝗵𝗲𝗰𝗸𝗼𝘂𝘁𝘀 : <code>{total_checkouts}</code>\n"
+    response += f"「❃」 𝗧𝗼𝘁𝗮𝗹 𝗖𝗵𝗮𝗿𝗴𝗲𝗱 : <code>{total_charged}</code></blockquote>\n\n"
+    
+    if top_users:
+        response += "<blockquote><code>𝗧𝗼𝗽 5 𝗨𝘀𝗲𝗿𝘀 🏆</code></blockquote>\n\n"
+        for i, (uid, data) in enumerate(top_users, 1):
+            # Check if premium
+            is_premium = "Premium ⭐" if uid in PREMIUM_USERS and datetime.now().timestamp() < PREMIUM_USERS[uid] else "Free"
+            username = f"@{data['username']}" if data['username'] != "None" else "None"
+            
+            response += f"<blockquote>「{i}」 <b>{data['name']}</b>\n"
+            response += f"    • 𝗨𝘀𝗲𝗿𝗻𝗮𝗺𝗲 : <code>{username}</code>\n"
+            response += f"    • 𝗨𝘀𝗲𝗿 𝗜𝗗 : <code>{uid}</code>\n"
+            response += f"    • 𝗖𝗵𝗲𝗰𝗸𝗼𝘂𝘁𝘀 : <code>{data['checkouts']}</code>\n"
+            response += f"    • 𝗖𝗵𝗮𝗿𝗴𝗲𝗱 : <code>{data['charged']}</code>\n"
+            response += f"    • 𝗦𝘁𝗮𝘁𝘂𝘀 : <code>{is_premium}</code></blockquote>\n\n"
+    
+    await msg.answer(response, parse_mode=ParseMode.HTML)
 
 

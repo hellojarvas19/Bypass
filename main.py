@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
-from config import BOT_TOKEN, PREMIUM_USERS, ADMIN_IDS
+from config import BOT_TOKEN, PREMIUM_USERS, ADMIN_IDS, USER_STATS
 from commands import router
 import json
 import os
@@ -40,6 +40,16 @@ if os.path.exists('/root/3D/admin_ids.json'):
         logger.info(f"Loaded {len(ADMIN_IDS)} admin users")
     except Exception as e:
         logger.error(f"Error loading admin IDs: {e}")
+
+# Load user stats from file
+if os.path.exists('/root/3D/user_stats.json'):
+    try:
+        with open('/root/3D/user_stats.json', 'r') as f:
+            loaded = json.load(f)
+            USER_STATS.update({int(k): v for k, v in loaded.items()})
+        logger.info(f"Loaded stats for {len(USER_STATS)} users")
+    except Exception as e:
+        logger.error(f"Error loading user stats: {e}")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()

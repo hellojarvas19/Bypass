@@ -9,10 +9,20 @@ from aiogram.enums import ParseMode
 logger = logging.getLogger(__name__)
 router = Router()
 
-from config import ALLOWED_GROUP, OWNER_ID, ALLOWED_USERS, PREMIUM_USERS
+from config import ALLOWED_GROUP, OWNER_ID, ALLOWED_USERS, PREMIUM_USERS, USER_STATS
 from functions.co_functions import parse_stripe_checkout
+import json
 
 API_URL = "https://web-production-2f61.up.railway.app"
+
+def save_stats():
+    try:
+        import os
+        os.makedirs('/root/3D', exist_ok=True)
+        with open('/root/3D/user_stats.json', 'w') as f:
+            json.dump(USER_STATS, f)
+    except Exception as e:
+        logger.error(f"Error saving stats: {e}")
 
 def check_access(msg: Message) -> bool:
     if not msg.from_user:
@@ -47,6 +57,18 @@ async def co_handler(msg: Message):
             parse_mode=ParseMode.HTML
         )
         return
+    
+    # Track user stats
+    user_id = msg.from_user.id
+    if user_id not in USER_STATS:
+        USER_STATS[user_id] = {
+            "name": msg.from_user.first_name,
+            "username": msg.from_user.username or "None",
+            "checkouts": 0,
+            "charged": 0
+        }
+    USER_STATS[user_id]["checkouts"] += 1
+    save_stats()
     
     args = msg.text.split(maxsplit=1)
     if len(args) < 2:
@@ -197,6 +219,8 @@ async def co_handler(msg: Message):
         response += f"<blockquote>「❃」 𝗖𝗼𝗺𝗺𝗮𝗻𝗱 : <code>/co</code>\n"
         response += f"「❃」 𝗧𝗶𝗺𝗲 : <code>{total_time}s</code></blockquote>"
     elif charged_card:
+        USER_STATS[user_id]["charged"] += 1
+        save_stats()
         response = f"<blockquote><code>「 𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱 ✅ 」</code></blockquote>\n\n"
         response += f"<blockquote>「❃」 𝗖𝗮𝗿𝗱 : <code>{charged_card['card']}</code>\n"
         response += f"「❃」 𝗦𝘁𝗮𝘁𝘂𝘀 : <code>CHARGED ✅</code>\n"

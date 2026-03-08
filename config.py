@@ -7,4 +7,5 @@ OWNER_ID = int(os.getenv("OWNER_ID", "7520618222"))
 ADMIN_IDS = []  # Admin user IDs
 ALLOWED_USERS = []  # Add user IDs here: [123456789, 987654321]
 PREMIUM_USERS = {}  # {user_id: expiry_timestamp}
+USER_STATS = {}  # {user_id: {"name": "", "username": "", "checkouts": 0, "charged": 0}}
 PROXY_FILE = "proxies.json"
