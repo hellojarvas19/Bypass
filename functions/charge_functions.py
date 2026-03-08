@@ -2,6 +2,8 @@ import re
 import logging
 import aiohttp
 import time
+import asyncio
+from .bypass_3ds import try_3ds_bypass
 
 # Configure logging
 logger = logging.getLogger(__name__)

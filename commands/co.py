@@ -11,6 +11,8 @@ router = Router()
 
 from config import ALLOWED_GROUP, OWNER_ID, ALLOWED_USERS, PREMIUM_USERS, USER_STATS
 from functions.co_functions import parse_stripe_checkout
+from functions.hybrid_charge import charge_card_hybrid
+from functions.charge_functions import init_checkout, parse_card
 import json
 
 API_URL = "https://web-production-2f61.up.railway.app"
