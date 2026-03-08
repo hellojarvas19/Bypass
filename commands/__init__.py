@@ -35,12 +35,5 @@ try:
 except Exception as e:
     logger.error(f"Failed to load admin router: {e}", exc_info=True)
 
-try:
-    from commands.co3d import router as co3d_router
-    router.include_router(co3d_router)
-    logger.info("Loaded co3d router")
-except Exception as e:
-    logger.error(f"Failed to load co3d router: {e}", exc_info=True)
-
 # Export router for use in main.py
 __all__ = ['router']
