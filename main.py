@@ -1,0 +1,69 @@
+import asyncio
+import logging
+from aiogram import Bot, Dispatcher
+from config import BOT_TOKEN, PREMIUM_USERS
+from commands import router
+import json
+import os
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Load premium users from environment or file
+premium_data = os.getenv("PREMIUM_USERS_JSON")
+if premium_data:
+    try:
+        loaded = json.loads(premium_data)
+        PREMIUM_USERS.update({int(k): v for k, v in loaded.items()})
+        logger.info(f"Loaded {len(PREMIUM_USERS)} premium users from env")
+    except Exception as e:
+        logger.error(f"Error loading premium users from env: {e}")
+elif os.path.exists('/root/3D/premium_users.json'):
+    try:
+        with open('/root/3D/premium_users.json', 'r') as f:
+            loaded = json.load(f)
+            PREMIUM_USERS.update({int(k): v for k, v in loaded.items()})
+        logger.info(f"Loaded {len(PREMIUM_USERS)} premium users from file")
+    except Exception as e:
+        logger.error(f"Error loading premium users from file: {e}")
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
+dp.include_router(router)
+
+async def main():
+    """Main entry point for the bot."""
+    logger.info("Starting bot...")
+    try:
+        await dp.start_polling(bot, skip_updates=True)
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user")
+    except Exception as e:
+        logger.error(f"Bot error: {e}", exc_info=True)
+    finally:
+        # Properly close all sessions
+        try:
+            from functions.charge_functions import _session as charge_session
+            if charge_session and not charge_session.closed:
+                await charge_session.close()
+                logger.info("Charge session closed")
+        except Exception as e:
+            logger.error(f"Error closing charge session: {e}")
+        
+        try:
+            from commands.co import _session as co_session
+            if co_session and not co_session.closed:
+                await co_session.close()
+                logger.info("CO session closed")
+        except Exception as e:
+            logger.error(f"Error closing CO session: {e}")
+        
+        await bot.session.close()
+        logger.info("Bot shutdown complete")
+
+if __name__ == "__main__":
+    asyncio.run(main())
