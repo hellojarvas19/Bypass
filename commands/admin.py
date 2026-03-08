@@ -44,6 +44,8 @@ async def addp_handler(msg: Message):
             json.dump(PREMIUM_USERS, f)
         
         expiry_str = expiry.strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Notify admin
         await msg.answer(
             "<blockquote><code>𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗔𝗱𝗱𝗲𝗱 ✅</code></blockquote>\n\n"
             f"<blockquote>「❃」 𝗨𝘀𝗲𝗿 : <code>{user_id}</code>\n"
@@ -51,6 +53,22 @@ async def addp_handler(msg: Message):
             f"「❃」 𝗘𝘅𝗽𝗶𝗿𝘆 : <code>{expiry_str}</code></blockquote>",
             parse_mode=ParseMode.HTML
         )
+        
+        # Notify user
+        try:
+            from main import bot
+            await bot.send_message(
+                user_id,
+                "<blockquote><code>𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗔𝗰𝘁𝗶𝘃𝗮𝘁𝗲𝗱 🎉</code></blockquote>\n\n"
+                f"<blockquote>「❃」 𝗣𝗹𝗮𝗻 : <code>{days} Days Premium</code>\n"
+                f"「❃」 𝗘𝘅𝗽𝗶𝗿𝘆 : <code>{expiry_str}</code>\n"
+                f"「❃」 𝗦𝘁𝗮𝘁𝘂𝘀 : <code>Active ✅</code></blockquote>\n\n"
+                "<blockquote>「❃」 𝗧𝗵𝗮𝗻𝗸 𝘆𝗼𝘂 𝗳𝗼𝗿 𝘂𝘀𝗶𝗻𝗴 𝗼𝘂𝗿 𝘀𝗲𝗿𝘃𝗶𝗰𝗲!</blockquote>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception as e:
+            logger.error(f"Error notifying user {user_id}: {e}")
+            
     except Exception as e:
         logger.error(f"Error saving premium users: {e}")
         await msg.answer(
