@@ -1,5 +1,5 @@
 import logging
-from aiogram import Router
+from aiogram import Router, Bot
 from aiogram.types import Message
 from aiogram.filters import Command
 from aiogram.enums import ParseMode
@@ -9,7 +9,9 @@ import json
 logger = logging.getLogger(__name__)
 router = Router()
 
-from config import OWNER_ID, PREMIUM_USERS
+from config import OWNER_ID, PREMIUM_USERS, BOT_TOKEN
+
+bot = Bot(token=BOT_TOKEN)
 
 @router.message(Command("addp"))
 async def addp_handler(msg: Message):
@@ -56,7 +58,6 @@ async def addp_handler(msg: Message):
         
         # Notify user
         try:
-            from main import bot
             await bot.send_message(
                 user_id,
                 "<blockquote><code>𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗔𝗰𝘁𝗶𝘃𝗮𝘁𝗲𝗱 🎉</code></blockquote>\n\n"
