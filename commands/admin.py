@@ -187,7 +187,12 @@ async def adm_cmd_handler(msg: Message):
         "<blockquote>「❃」 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁\n"
         "    • <code>/addp [userid] [days]</code> - Add Premium\n"
         "    • <code>/rmp [userid]</code> - Remove Premium</blockquote>\n\n"
-        "<blockquote>「❃」 𝗨𝘀𝗲𝗿 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁\n"
+        "<blockquote>「❃」 𝗔𝗱𝗺𝗶𝗻 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁 (Owner Only)\n"
+        "    • <code>/add_adm [userid]</code> - Add Admin\n"
+        "    • <code>/rm_adm [userid]</code> - Remove Admin</blockquote>\n\n"
+        "<blockquote>「❃」 𝗕𝗼𝘁 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁\n"
+        "    • <code>/stats</code> - View Statistics\n"
+        "    • <code>/broad [message]</code> - Broadcast Message\n"
         "    • <code>/adm_cmd</code> - Show Admin Commands</blockquote>",
         parse_mode=ParseMode.HTML
     )
