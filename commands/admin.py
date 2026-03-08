@@ -106,4 +106,70 @@ async def info_handler(msg: Message):
         parse_mode=ParseMode.HTML
     )
 
+@router.message(Command("rmp"))
+async def rmp_handler(msg: Message):
+    if msg.from_user.id != OWNER_ID:
+        await msg.answer(
+            "<blockquote><code>𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗢𝗻𝗹𝘆 𝗢𝘄𝗻𝗲𝗿 𝗖𝗮𝗻 𝗨𝘀𝗲 𝗧𝗵𝗶𝘀</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    args = msg.text.split()
+    if len(args) < 2 or not args[1].isdigit():
+        await msg.answer(
+            "<blockquote><code>𝗥𝗲𝗺𝗼𝘃𝗲 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 ⚡</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗨𝘀𝗮𝗴𝗲 : <code>/rmp [userid]</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    user_id = int(args[1])
+    
+    if user_id not in PREMIUM_USERS:
+        await msg.answer(
+            "<blockquote><code>𝗡𝗼𝘁 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 ⚠</code></blockquote>\n\n"
+            f"<blockquote>「❃」 𝗨𝘀𝗲𝗿 : <code>{user_id}</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    del PREMIUM_USERS[user_id]
+    
+    # Save to file
+    try:
+        import os
+        os.makedirs('/root/3D', exist_ok=True)
+        with open('/root/3D/premium_users.json', 'w') as f:
+            json.dump(PREMIUM_USERS, f)
+        
+        # Notify admin
+        await msg.answer(
+            "<blockquote><code>𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗥𝗲𝗺𝗼𝘃𝗲𝗱 ✅</code></blockquote>\n\n"
+            f"<blockquote>「❃」 𝗨𝘀𝗲𝗿 : <code>{user_id}</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        
+        # Notify user
+        try:
+            await bot.send_message(
+                user_id,
+                "<blockquote><code>𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗘𝘅𝗽𝗶𝗿𝗲𝗱 ⚠</code></blockquote>\n\n"
+                "<blockquote>「❃」 𝗬𝗼𝘂𝗿 𝗽𝗿𝗲𝗺𝗶𝘂𝗺 𝗮𝗰𝗰𝗲𝘀𝘀 𝗵𝗮𝘀 𝗯𝗲𝗲𝗻 𝗿𝗲𝗺𝗼𝘃𝗲𝗱\n"
+                "「❃」 𝗖𝗼𝗻𝘁𝗮𝗰𝘁 : <code>@xDElwin</code></blockquote>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception as e:
+            logger.error(f"Error notifying user {user_id}: {e}")
+            
+    except Exception as e:
+        logger.error(f"Error saving premium users: {e}")
+        await msg.answer(
+            "<blockquote><code>𝗘𝗿𝗿𝗼𝗿 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝘀𝗮𝘃𝗲</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+
+
 
