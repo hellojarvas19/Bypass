@@ -77,6 +77,43 @@ def format_proxy(proxy: str) -> str:
         return f"http://{parts[0]}:{parts[1]}"
     return None
 
+async def validate_proxy(proxy_str: str, timeout: int = 10) -> dict:
+    result = {
+        "proxy": proxy_str,
+        "status": "❌ Dead",
+        "response_time": None,
+        "ip": None,
+        "country": None,
+        "error": None
+    }
+    
+    proxy_url = format_proxy(proxy_str)
+    if not proxy_url:
+        result["error"] = "Invalid format"
+        return result
+    
+    try:
+        start = time.perf_counter()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "http://ip-api.com/json",
+                proxy=proxy_url,
+                timeout=aiohttp.ClientTimeout(total=timeout)
+            ) as resp:
+                elapsed = round((time.perf_counter() - start) * 1000, 2)
+                if resp.status == 200:
+                    data = await resp.json()
+                    result["status"] = "✅ Alive"
+                    result["response_time"] = f"{elapsed}ms"
+                    result["ip"] = data.get("query")
+                    result["country"] = data.get("country")
+    except asyncio.TimeoutError:
+        result["error"] = "Timeout"
+    except Exception as e:
+        result["error"] = str(e)[:50]
+    
+    return result
+
 def save_stats():
     try:
         import os
@@ -476,16 +513,39 @@ async def proxy_command(msg: Message):
         # Show current proxies
         proxies = get_user_proxies(user_id)
         if not proxies:
-            await msg.reply("❌ No proxies configured\n\nUsage:\n/proxy add host:port:user:pass\n/proxy remove host:port:user:pass\n/proxy remove all")
+            await msg.reply(
+                "❌ <b>No proxies configured</b>\n\n"
+                "<b>Usage:</b>\n"
+                "• /proxy add host:port:user:pass\n"
+                "• /proxy remove host:port:user:pass\n"
+                "• /proxy remove all\n"
+                "• /proxy check host:port:user:pass",
+                parse_mode=ParseMode.HTML
+            )
             return
         
-        proxy_list = "\n".join([f"• {p}" for p in proxies])
-        await msg.reply(f"✅ Your proxies:\n\n{proxy_list}\n\nUsage:\n/proxy add host:port:user:pass\n/proxy remove host:port:user:pass\n/proxy remove all")
+        proxy_list = "\n".join([f"• <code>{p}</code>" for p in proxies])
+        await msg.reply(
+            f"✅ <b>Your proxies:</b>\n\n{proxy_list}\n\n"
+            "<b>Usage:</b>\n"
+            "• /proxy add host:port:user:pass\n"
+            "• /proxy remove host:port:user:pass\n"
+            "• /proxy remove all\n"
+            "• /proxy check host:port:user:pass",
+            parse_mode=ParseMode.HTML
+        )
         return
     
     cmd_parts = args[1].split(maxsplit=1)
     if len(cmd_parts) < 1:
-        await msg.reply("Usage:\n/proxy add host:port:user:pass\n/proxy remove host:port:user:pass\n/proxy remove all")
+        await msg.reply(
+            "<b>Usage:</b>\n"
+            "• /proxy add host:port:user:pass\n"
+            "• /proxy remove host:port:user:pass\n"
+            "• /proxy remove all\n"
+            "• /proxy check host:port:user:pass",
+            parse_mode=ParseMode.HTML
+        )
         return
     
     action = cmd_parts[0].lower()
@@ -496,8 +556,64 @@ async def proxy_command(msg: Message):
             return
         
         proxy = cmd_parts[1]
-        add_user_proxy(user_id, proxy)
-        await msg.reply(f"✅ Proxy added: {proxy}")
+        
+        # Validate proxy format
+        parts = proxy.split(':')
+        if len(parts) not in [2, 4]:
+            await msg.reply("❌ Invalid format. Use: host:port:user:pass or host:port")
+            return
+        
+        # Check if proxy is alive
+        checking_msg = await msg.reply("⏳ Checking proxy...")
+        result = await validate_proxy(proxy)
+        
+        if result["status"] == "✅ Alive":
+            add_user_proxy(user_id, proxy)
+            await checking_msg.edit_text(
+                f"✅ <b>Proxy added successfully!</b>\n\n"
+                f"<b>Proxy:</b> <code>{proxy}</code>\n"
+                f"<b>Status:</b> {result['status']}\n"
+                f"<b>Response Time:</b> {result['response_time']}\n"
+                f"<b>IP:</b> <code>{result['ip']}</code>\n"
+                f"<b>Country:</b> {result['country']}",
+                parse_mode=ParseMode.HTML
+            )
+        else:
+            error_msg = f" ({result['error']})" if result['error'] else ""
+            await checking_msg.edit_text(
+                f"❌ <b>Proxy is dead{error_msg}</b>\n\n"
+                f"<b>Proxy:</b> <code>{proxy}</code>\n"
+                f"<b>Status:</b> {result['status']}",
+                parse_mode=ParseMode.HTML
+            )
+    
+    elif action == "check":
+        if len(cmd_parts) < 2:
+            await msg.reply("Usage: /proxy check host:port:user:pass")
+            return
+        
+        proxy = cmd_parts[1]
+        checking_msg = await msg.reply("⏳ Checking proxy...")
+        result = await validate_proxy(proxy)
+        
+        if result["status"] == "✅ Alive":
+            await checking_msg.edit_text(
+                f"<b>Proxy Status:</b>\n\n"
+                f"<b>Proxy:</b> <code>{proxy}</code>\n"
+                f"<b>Status:</b> {result['status']}\n"
+                f"<b>Response Time:</b> {result['response_time']}\n"
+                f"<b>IP:</b> <code>{result['ip']}</code>\n"
+                f"<b>Country:</b> {result['country']}",
+                parse_mode=ParseMode.HTML
+            )
+        else:
+            error_msg = f" ({result['error']})" if result['error'] else ""
+            await checking_msg.edit_text(
+                f"<b>Proxy Status:</b>\n\n"
+                f"<b>Proxy:</b> <code>{proxy}</code>\n"
+                f"<b>Status:</b> {result['status']}{error_msg}",
+                parse_mode=ParseMode.HTML
+            )
     
     elif action == "remove":
         if len(cmd_parts) < 2:
@@ -506,9 +622,16 @@ async def proxy_command(msg: Message):
         
         proxy = cmd_parts[1]
         if remove_user_proxy(user_id, proxy):
-            await msg.reply(f"✅ Proxy removed: {proxy}")
+            await msg.reply(f"✅ Proxy removed: <code>{proxy}</code>", parse_mode=ParseMode.HTML)
         else:
             await msg.reply("❌ Proxy not found")
     
     else:
-        await msg.reply("Usage:\n/proxy add host:port:user:pass\n/proxy remove host:port:user:pass\n/proxy remove all")
+        await msg.reply(
+            "<b>Usage:</b>\n"
+            "• /proxy add host:port:user:pass\n"
+            "• /proxy remove host:port:user:pass\n"
+            "• /proxy remove all\n"
+            "• /proxy check host:port:user:pass",
+            parse_mode=ParseMode.HTML
+        )
