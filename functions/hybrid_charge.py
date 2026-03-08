@@ -156,8 +156,16 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
             pi_secret = pi.get("client_secret")
             
             if not three_ds_source:
-                result["status"] = "3DS"
-                result["response"] = "3DS Required"
+                # Check if there's an error in payment_intent
+                last_error = pi.get("last_payment_error")
+                if last_error:
+                    err_msg = last_error.get("message", "Card Declined")
+                    err_code = last_error.get("code") or last_error.get("decline_code")
+                    result["status"] = "DECLINED"
+                    result["response"] = f"{err_code.upper()}: {err_msg}" if err_code else err_msg
+                else:
+                    result["status"] = "3DS"
+                    result["response"] = "3DS Required"
                 result["time"] = round(time.perf_counter() - start, 2)
                 return result
             
