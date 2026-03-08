@@ -295,4 +295,68 @@ async def stats_handler(msg: Message):
     
     await msg.answer(response, parse_mode=ParseMode.HTML)
 
+@router.message(Command("rm_adm"))
+async def rm_adm_handler(msg: Message):
+    if msg.from_user.id != OWNER_ID:
+        await msg.answer(
+            "<blockquote><code>𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗢𝗻𝗹𝘆 𝗢𝘄𝗻𝗲𝗿 𝗖𝗮𝗻 𝗨𝘀𝗲 𝗧𝗵𝗶𝘀</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    args = msg.text.split()
+    if len(args) < 2 or not args[1].isdigit():
+        await msg.answer(
+            "<blockquote><code>𝗥𝗲𝗺𝗼𝘃𝗲 𝗔𝗱𝗺𝗶𝗻 ⚡</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗨𝘀𝗮𝗴𝗲 : <code>/rm_adm [userid]</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    user_id = int(args[1])
+    
+    if user_id not in ADMIN_IDS:
+        await msg.answer(
+            "<blockquote><code>𝗡𝗼𝘁 𝗔𝗱𝗺𝗶𝗻 ⚠</code></blockquote>\n\n"
+            f"<blockquote>「❃」 𝗨𝘀𝗲𝗿 : <code>{user_id}</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    ADMIN_IDS.remove(user_id)
+    
+    # Save to file
+    try:
+        import os
+        os.makedirs('/root/3D', exist_ok=True)
+        with open('/root/3D/admin_ids.json', 'w') as f:
+            json.dump(ADMIN_IDS, f)
+        
+        # Notify owner
+        await msg.answer(
+            "<blockquote><code>𝗔𝗱𝗺𝗶𝗻 𝗥𝗲𝗺𝗼𝘃𝗲𝗱 ✅</code></blockquote>\n\n"
+            f"<blockquote>「❃」 𝗨𝘀𝗲𝗿 : <code>{user_id}</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        
+        # Notify user
+        try:
+            await bot.send_message(
+                user_id,
+                "<blockquote><code>𝗔𝗱𝗺𝗶𝗻 𝗔𝗰𝗰𝗲𝘀𝘀 𝗥𝗲𝘃𝗼𝗸𝗲𝗱 ⚠</code></blockquote>\n\n"
+                "<blockquote>「❃」 𝗬𝗼𝘂𝗿 𝗮𝗱𝗺𝗶𝗻 𝗮𝗰𝗰𝗲𝘀𝘀 𝗵𝗮𝘀 𝗯𝗲𝗲𝗻 𝗿𝗲𝗺𝗼𝘃𝗲𝗱</blockquote>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception as e:
+            logger.error(f"Error notifying user {user_id}: {e}")
+            
+    except Exception as e:
+        logger.error(f"Error saving admin IDs: {e}")
+        await msg.answer(
+            "<blockquote><code>𝗘𝗿𝗿𝗼𝗿 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝘀𝗮𝘃𝗲</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+
 
