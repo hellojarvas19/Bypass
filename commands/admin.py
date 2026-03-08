@@ -171,5 +171,25 @@ async def rmp_handler(msg: Message):
             parse_mode=ParseMode.HTML
         )
 
+@router.message(Command("adm_cmd"))
+async def adm_cmd_handler(msg: Message):
+    if msg.from_user.id != OWNER_ID:
+        await msg.answer(
+            "<blockquote><code>𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗢𝗻𝗹𝘆 𝗢𝘄𝗻𝗲𝗿 𝗖𝗮𝗻 𝗨𝘀𝗲 𝗧𝗵𝗶𝘀</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    await msg.answer(
+        "<blockquote><code>𝗔𝗱𝗺𝗶𝗻 𝗖𝗼𝗺𝗺𝗮𝗻𝗱𝘀 ⚡</code></blockquote>\n\n"
+        "<blockquote>「❃」 𝗣𝗿𝗲𝗺𝗶𝘂𝗺 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁\n"
+        "    • <code>/addp [userid] [days]</code> - Add Premium\n"
+        "    • <code>/rmp [userid]</code> - Remove Premium</blockquote>\n\n"
+        "<blockquote>「❃」 𝗨𝘀𝗲𝗿 𝗠𝗮𝗻𝗮𝗴𝗲𝗺𝗲𝗻𝘁\n"
+        "    • <code>/adm_cmd</code> - Show Admin Commands</blockquote>",
+        parse_mode=ParseMode.HTML
+    )
+
 
 
