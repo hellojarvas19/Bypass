@@ -9,13 +9,13 @@ import json
 logger = logging.getLogger(__name__)
 router = Router()
 
-from config import OWNER_ID, PREMIUM_USERS, BOT_TOKEN
+from config import OWNER_ID, PREMIUM_USERS, BOT_TOKEN, ADMIN_IDS
 
 bot = Bot(token=BOT_TOKEN)
 
 @router.message(Command("addp"))
 async def addp_handler(msg: Message):
-    if msg.from_user.id != OWNER_ID:
+    if msg.from_user.id != OWNER_ID and msg.from_user.id not in ADMIN_IDS:
         await msg.answer(
             "<blockquote><code>𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱 ❌</code></blockquote>\n\n"
             "<blockquote>「❃」 𝗢𝗻𝗹𝘆 𝗢𝘄𝗻𝗲𝗿 𝗖𝗮𝗻 𝗨𝘀𝗲 𝗧𝗵𝗶𝘀</blockquote>",
@@ -108,7 +108,7 @@ async def info_handler(msg: Message):
 
 @router.message(Command("rmp"))
 async def rmp_handler(msg: Message):
-    if msg.from_user.id != OWNER_ID:
+    if msg.from_user.id != OWNER_ID and msg.from_user.id not in ADMIN_IDS:
         await msg.answer(
             "<blockquote><code>𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱 ❌</code></blockquote>\n\n"
             "<blockquote>「❃」 𝗢𝗻𝗹𝘆 𝗢𝘄𝗻𝗲𝗿 𝗖𝗮𝗻 𝗨𝘀𝗲 𝗧𝗵𝗶𝘀</blockquote>",
@@ -173,7 +173,7 @@ async def rmp_handler(msg: Message):
 
 @router.message(Command("adm_cmd"))
 async def adm_cmd_handler(msg: Message):
-    if msg.from_user.id != OWNER_ID:
+    if msg.from_user.id != OWNER_ID and msg.from_user.id not in ADMIN_IDS:
         await msg.answer(
             "<blockquote><code>𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱 ❌</code></blockquote>\n\n"
             "<blockquote>「❃」 𝗢𝗻𝗹𝘆 𝗢𝘄𝗻𝗲𝗿 𝗖𝗮𝗻 𝗨𝘀𝗲 𝗧𝗵𝗶𝘀</blockquote>",
@@ -190,6 +190,71 @@ async def adm_cmd_handler(msg: Message):
         "    • <code>/adm_cmd</code> - Show Admin Commands</blockquote>",
         parse_mode=ParseMode.HTML
     )
+
+@router.message(Command("add_adm"))
+async def add_adm_handler(msg: Message):
+    if msg.from_user.id != OWNER_ID:
+        await msg.answer(
+            "<blockquote><code>𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗢𝗻𝗹𝘆 𝗢𝘄𝗻𝗲𝗿 𝗖𝗮𝗻 𝗨𝘀𝗲 𝗧𝗵𝗶𝘀</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    args = msg.text.split()
+    if len(args) < 2 or not args[1].isdigit():
+        await msg.answer(
+            "<blockquote><code>𝗔𝗱𝗱 𝗔𝗱𝗺𝗶𝗻 ⚡</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗨𝘀𝗮𝗴𝗲 : <code>/add_adm [userid]</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    user_id = int(args[1])
+    
+    if user_id in ADMIN_IDS:
+        await msg.answer(
+            "<blockquote><code>𝗔𝗹𝗿𝗲𝗮𝗱𝘆 𝗔𝗱𝗺𝗶𝗻 ⚠</code></blockquote>\n\n"
+            f"<blockquote>「❃」 𝗨𝘀𝗲𝗿 : <code>{user_id}</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    ADMIN_IDS.append(user_id)
+    
+    # Save to file
+    try:
+        import os
+        os.makedirs('/root/3D', exist_ok=True)
+        with open('/root/3D/admin_ids.json', 'w') as f:
+            json.dump(ADMIN_IDS, f)
+        
+        # Notify owner
+        await msg.answer(
+            "<blockquote><code>𝗔𝗱𝗺𝗶𝗻 𝗔𝗱𝗱𝗲𝗱 ✅</code></blockquote>\n\n"
+            f"<blockquote>「❃」 𝗨𝘀𝗲𝗿 : <code>{user_id}</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        
+        # Notify user
+        try:
+            await bot.send_message(
+                user_id,
+                "<blockquote><code>𝗔𝗱𝗺𝗶𝗻 𝗔𝗰𝗰𝗲𝘀𝘀 𝗚𝗿𝗮𝗻𝘁𝗲𝗱 🎉</code></blockquote>\n\n"
+                "<blockquote>「❃」 𝗬𝗼𝘂 𝗵𝗮𝘃𝗲 𝗯𝗲𝗲𝗻 𝗽𝗿𝗼𝗺𝗼𝘁𝗲𝗱 𝘁𝗼 𝗔𝗱𝗺𝗶𝗻\n"
+                "「❃」 𝗨𝘀𝗲 <code>/adm_cmd</code> 𝘁𝗼 𝘀𝗲𝗲 𝗮𝗱𝗺𝗶𝗻 𝗰𝗼𝗺𝗺𝗮𝗻𝗱𝘀</blockquote>",
+                parse_mode=ParseMode.HTML
+            )
+        except Exception as e:
+            logger.error(f"Error notifying user {user_id}: {e}")
+            
+    except Exception as e:
+        logger.error(f"Error saving admin IDs: {e}")
+        await msg.answer(
+            "<blockquote><code>𝗘𝗿𝗿𝗼𝗿 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗙𝗮𝗶𝗹𝗲𝗱 𝘁𝗼 𝘀𝗮𝘃𝗲</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
 
 
 
