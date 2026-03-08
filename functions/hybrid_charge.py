@@ -19,6 +19,9 @@ API_URL = "https://web-production-2f61.up.railway.app"
 async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, session: aiohttp.ClientSession, checkout_url: str = None, proxy: str = None) -> dict:
     """Dual 3DS bypass: Try method 1 (profile rotation) first, then method 2 (API) if needed"""
     start = time.perf_counter()
+    
+    logger.info(f"🔧 Proxy parameter: {proxy if proxy else 'None'}")
+    
     result = {
         "card": f"{card['cc']}|{card['month']}|{card['year']}|{card['cvv']}",
         "status": None,
