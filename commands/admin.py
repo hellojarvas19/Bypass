@@ -38,6 +38,8 @@ async def addp_handler(msg: Message):
     
     # Save to file
     try:
+        import os
+        os.makedirs('/root/3D', exist_ok=True)
         with open('/root/3D/premium_users.json', 'w') as f:
             json.dump(PREMIUM_USERS, f)
         
