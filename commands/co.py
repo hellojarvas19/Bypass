@@ -9,13 +9,73 @@ from aiogram.enums import ParseMode
 logger = logging.getLogger(__name__)
 router = Router()
 
-from config import ALLOWED_GROUP, OWNER_ID, ALLOWED_USERS, PREMIUM_USERS, USER_STATS
+from config import ALLOWED_GROUP, OWNER_ID, ALLOWED_USERS, PREMIUM_USERS, USER_STATS, PROXY_FILE
 from functions.co_functions import parse_stripe_checkout
 from functions.hybrid_charge import charge_card_hybrid
 from functions.charge_functions import init_checkout, parse_card
 import json
+import os
 
 API_URL = "https://web-production-2f61.up.railway.app"
+
+def load_proxies() -> dict:
+    try:
+        if os.path.exists(PROXY_FILE):
+            with open(PROXY_FILE, 'r') as f:
+                return json.load(f)
+    except:
+        pass
+    return {}
+
+def save_proxies(data: dict):
+    with open(PROXY_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
+
+def get_user_proxies(user_id: int) -> list:
+    proxies = load_proxies()
+    user_data = proxies.get(str(user_id), [])
+    if isinstance(user_data, str):
+        return [user_data] if user_data else []
+    return user_data if isinstance(user_data, list) else []
+
+def add_user_proxy(user_id: int, proxy: str):
+    proxies = load_proxies()
+    user_key = str(user_id)
+    if user_key not in proxies:
+        proxies[user_key] = []
+    elif isinstance(proxies[user_key], str):
+        proxies[user_key] = [proxies[user_key]] if proxies[user_key] else []
+    
+    if proxy not in proxies[user_key]:
+        proxies[user_key].append(proxy)
+    save_proxies(proxies)
+
+def remove_user_proxy(user_id: int, proxy: str = None):
+    proxies = load_proxies()
+    user_key = str(user_id)
+    if user_key in proxies:
+        if proxy is None or proxy.lower() == "all":
+            del proxies[user_key]
+        else:
+            if isinstance(proxies[user_key], list):
+                proxies[user_key] = [p for p in proxies[user_key] if p != proxy]
+                if not proxies[user_key]:
+                    del proxies[user_key]
+            elif isinstance(proxies[user_key], str) and proxies[user_key] == proxy:
+                del proxies[user_key]
+        save_proxies(proxies)
+        return True
+    return False
+
+def format_proxy(proxy: str) -> str:
+    if not proxy:
+        return None
+    parts = proxy.split(':')
+    if len(parts) == 4:
+        return f"http://{parts[2]}:{parts[3]}@{parts[0]}:{parts[1]}"
+    elif len(parts) == 2:
+        return f"http://{parts[0]}:{parts[1]}"
+    return None
 
 def save_stats():
     try:
@@ -178,7 +238,11 @@ async def co_handler(msg: Message):
                     )
                     return
                 
-                result = await charge_card_hybrid(card, pk, cs, init_data, session, url)
+                # Get user proxy
+                user_proxies = get_user_proxies(msg.from_user.id)
+                proxy = format_proxy(user_proxies[0]) if user_proxies else None
+                
+                result = await charge_card_hybrid(card, pk, cs, init_data, session, url, proxy)
         except Exception as e:
             logger.error(f"Charge error: {e}")
             await processing_msg.edit_text(
@@ -286,6 +350,10 @@ async def co_handler(msg: Message):
                 )
                 return
             
+            # Get user proxy
+            user_proxies = get_user_proxies(msg.from_user.id)
+            proxy = format_proxy(user_proxies[0]) if user_proxies else None
+            
             for i, card_str in enumerate(cards, 1):
                 card = parse_card(card_str)
                 
@@ -293,7 +361,7 @@ async def co_handler(msg: Message):
                     results.append({"card": card_str, "status": "ERROR", "msg": "Invalid format", "time": 0})
                     continue
                 
-                result = await charge_card_hybrid(card, pk, cs, init_data, session, url)
+                result = await charge_card_hybrid(card, pk, cs, init_data, session, url, proxy)
                 
                 status = result.get("status")
                 msg_text = result.get("response")
@@ -394,3 +462,53 @@ async def co_handler(msg: Message):
         response += f"「❃」 𝗧𝗶𝗺𝗲 : <code>{total_time}s</code></blockquote>"
     
     await processing_msg.edit_text(response, parse_mode=ParseMode.HTML)
+
+
+@router.message(Command("proxy"))
+async def proxy_command(msg: Message):
+    if not check_access(msg):
+        return
+    
+    args = msg.text.split(maxsplit=1)
+    user_id = msg.from_user.id
+    
+    if len(args) == 1:
+        # Show current proxies
+        proxies = get_user_proxies(user_id)
+        if not proxies:
+            await msg.reply("❌ No proxies configured\n\nUsage:\n/proxy add host:port:user:pass\n/proxy remove host:port:user:pass\n/proxy remove all")
+            return
+        
+        proxy_list = "\n".join([f"• {p}" for p in proxies])
+        await msg.reply(f"✅ Your proxies:\n\n{proxy_list}\n\nUsage:\n/proxy add host:port:user:pass\n/proxy remove host:port:user:pass\n/proxy remove all")
+        return
+    
+    cmd_parts = args[1].split(maxsplit=1)
+    if len(cmd_parts) < 1:
+        await msg.reply("Usage:\n/proxy add host:port:user:pass\n/proxy remove host:port:user:pass\n/proxy remove all")
+        return
+    
+    action = cmd_parts[0].lower()
+    
+    if action == "add":
+        if len(cmd_parts) < 2:
+            await msg.reply("Usage: /proxy add host:port:user:pass")
+            return
+        
+        proxy = cmd_parts[1]
+        add_user_proxy(user_id, proxy)
+        await msg.reply(f"✅ Proxy added: {proxy}")
+    
+    elif action == "remove":
+        if len(cmd_parts) < 2:
+            await msg.reply("Usage: /proxy remove host:port:user:pass or /proxy remove all")
+            return
+        
+        proxy = cmd_parts[1]
+        if remove_user_proxy(user_id, proxy):
+            await msg.reply(f"✅ Proxy removed: {proxy}")
+        else:
+            await msg.reply("❌ Proxy not found")
+    
+    else:
+        await msg.reply("Usage:\n/proxy add host:port:user:pass\n/proxy remove host:port:user:pass\n/proxy remove all")

