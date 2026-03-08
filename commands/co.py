@@ -178,7 +178,7 @@ async def co_handler(msg: Message):
                     )
                     return
                 
-                result = await charge_card_hybrid(card, pk, cs, init_data, session)
+                result = await charge_card_hybrid(card, pk, cs, init_data, session, url)
         except Exception as e:
             logger.error(f"Charge error: {e}")
             await processing_msg.edit_text(
@@ -293,7 +293,7 @@ async def co_handler(msg: Message):
                     results.append({"card": card_str, "status": "ERROR", "msg": "Invalid format", "time": 0})
                     continue
                 
-                result = await charge_card_hybrid(card, pk, cs, init_data, session)
+                result = await charge_card_hybrid(card, pk, cs, init_data, session, url)
                 
                 status = result.get("status")
                 msg_text = result.get("response")
