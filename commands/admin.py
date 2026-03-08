@@ -360,3 +360,73 @@ async def rm_adm_handler(msg: Message):
         )
 
 
+
+@router.message(Command("broad"))
+async def broad_handler(msg: Message):
+    if msg.from_user.id != OWNER_ID and msg.from_user.id not in ADMIN_IDS:
+        await msg.answer(
+            "<blockquote><code>𝗔𝗰𝗰𝗲𝘀𝘀 𝗗𝗲𝗻𝗶𝗲𝗱 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗢𝗻𝗹𝘆 𝗔𝗱𝗺𝗶𝗻𝘀 𝗖𝗮𝗻 𝗨𝘀𝗲 𝗧𝗵𝗶𝘀</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    args = msg.text.split(maxsplit=1)
+    if len(args) < 2:
+        await msg.answer(
+            "<blockquote><code>𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁 📢</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗨𝘀𝗮𝗴𝗲 : <code>/broad [message]</code></blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    broadcast_msg = args[1]
+    user_ids = list(USER_STATS.keys())
+    
+    if not user_ids:
+        await msg.answer(
+            "<blockquote><code>𝗡𝗼 𝗨𝘀𝗲𝗿𝘀 ⚠</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗡𝗼 𝘂𝘀𝗲𝗿𝘀 𝘁𝗼 𝗯𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁 𝘁𝗼</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    status_msg = await msg.answer(
+        f"<blockquote><code>𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁𝗶𝗻𝗴... 📢</code></blockquote>\n\n"
+        f"<blockquote>「❃」 𝗧𝗼𝘁𝗮𝗹 : <code>{len(user_ids)}</code>\n"
+        f"「❃」 𝗦𝗲𝗻𝘁 : <code>0</code>\n"
+        f"「❃」 𝗙𝗮𝗶𝗹𝗲𝗱 : <code>0</code></blockquote>",
+        parse_mode=ParseMode.HTML
+    )
+    
+    sent = 0
+    failed = 0
+    
+    for user_id in user_ids:
+        try:
+            await bot.send_message(user_id, broadcast_msg, parse_mode=ParseMode.HTML)
+            sent += 1
+        except Exception as e:
+            logger.error(f"Failed to send to {user_id}: {e}")
+            failed += 1
+        
+        # Update every 10 users
+        if (sent + failed) % 10 == 0:
+            try:
+                await status_msg.edit_text(
+                    f"<blockquote><code>𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁𝗶𝗻𝗴... 📢</code></blockquote>\n\n"
+                    f"<blockquote>「❃」 𝗧𝗼𝘁𝗮𝗹 : <code>{len(user_ids)}</code>\n"
+                    f"「❃」 𝗦𝗲𝗻𝘁 : <code>{sent}</code>\n"
+                    f"「❃」 𝗙𝗮𝗶𝗹𝗲𝗱 : <code>{failed}</code></blockquote>",
+                    parse_mode=ParseMode.HTML
+                )
+            except:
+                pass
+    
+    await status_msg.edit_text(
+        f"<blockquote><code>𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁 𝗖𝗼𝗺𝗽𝗹𝗲𝘁𝗲 ✅</code></blockquote>\n\n"
+        f"<blockquote>「❃」 𝗧𝗼𝘁𝗮𝗹 : <code>{len(user_ids)}</code>\n"
+        f"「❃」 𝗦𝗲𝗻𝘁 : <code>{sent}</code>\n"
+        f"「❃」 𝗙𝗮𝗶𝗹𝗲𝗱 : <code>{failed}</code></blockquote>",
+        parse_mode=ParseMode.HTML
+    )
