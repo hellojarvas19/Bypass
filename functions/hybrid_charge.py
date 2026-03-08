@@ -68,7 +68,7 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
                 # Skip Method 1, go directly to Method 2
                 if checkout_url:
                     try:
-                        card_str = f"{card['cc']}|{card['month']}|{card['year']}{card['cvv']}"
+                        card_str = f"{card['cc']}|{card['month']}|{card['year']}|{card['cvv']}"
                         
                         logger.info(f"🔗 Calling API: {API_URL}")
                         logger.info(f"📦 URL: {checkout_url}")
@@ -205,7 +205,7 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
             
             if checkout_url:
                 try:
-                    card_str = f"{card['cc']}|{card['month']}|{card['year']}{card['cvv']}"
+                    card_str = f"{card['cc']}|{card['month']}|{card['year']}|{card['cvv']}"
                     
                     async with session.get(API_URL, params={"url": checkout_url, "card": card_str}, timeout=aiohttp.ClientTimeout(total=30)) as r:
                         api_result = await r.json()
