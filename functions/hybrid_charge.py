@@ -240,6 +240,9 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
         elif st == "requires_payment_method":
             result["status"] = "DECLINED"
             result["response"] = "Card Declined"
+        elif st == "open":
+            result["status"] = "DECLINED"
+            result["response"] = "CAPTCHA REQUIRED"
         else:
             result["status"] = "UNKNOWN"
             result["response"] = st or "Unknown"
