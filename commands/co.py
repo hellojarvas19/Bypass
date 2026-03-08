@@ -278,6 +278,8 @@ async def co_handler(msg: Message):
                 # Get user proxy
                 user_proxies = get_user_proxies(msg.from_user.id)
                 proxy = format_proxy(user_proxies[0]) if user_proxies else None
+                logger.info(f"📋 User proxies: {user_proxies}")
+                logger.info(f"🔧 Formatted proxy: {proxy}")
                 
                 result = await charge_card_hybrid(card, pk, cs, init_data, session, url, proxy)
         except Exception as e:
@@ -390,6 +392,8 @@ async def co_handler(msg: Message):
             # Get user proxy
             user_proxies = get_user_proxies(msg.from_user.id)
             proxy = format_proxy(user_proxies[0]) if user_proxies else None
+            logger.info(f"📋 User proxies (mass): {user_proxies}")
+            logger.info(f"🔧 Formatted proxy (mass): {proxy}")
             
             for i, card_str in enumerate(cards, 1):
                 card = parse_card(card_str)
