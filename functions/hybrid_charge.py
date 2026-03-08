@@ -228,13 +228,6 @@ async def charge_card_hybrid(card: dict, pk: str, cs: str, init_data: dict, sess
             else:
                 result["status"] = "3DS FAIL"
                 result["response"] = "3DS Bypass Failed"
-                else:
-                    result["status"] = "3DS FAIL"
-                    result["response"] = "Both bypass methods failed"
-            except Exception as e:
-                logger.error(f"Method 2 error: {e}")
-                result["status"] = "3DS FAIL"
-                result["response"] = "Both bypass methods failed"
         
         elif st == "requires_payment_method":
             result["status"] = "DECLINED"
