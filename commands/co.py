@@ -248,71 +248,121 @@ async def co_handler(msg: Message):
         parse_mode=ParseMode.HTML
     )
     
+    # Parse checkout first
+    checkout_data = await parse_stripe_checkout(url)
+    
+    if checkout_data.get("error"):
+        await processing_msg.edit_text(
+            "<blockquote><code>𝗘𝗿𝗿𝗼𝗿 ❌</code></blockquote>\n\n"
+            f"<blockquote>「❃」 {checkout_data.get('error')}</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    pk = checkout_data.get("pk")
+    cs = checkout_data.get("cs")
+    
+    if not pk or not cs:
+        await processing_msg.edit_text(
+            "<blockquote><code>𝗘𝗿𝗿𝗼𝗿 ❌</code></blockquote>\n\n"
+            "<blockquote>「❃」 𝗖𝗼𝘂𝗹𝗱 𝗻𝗼𝘁 𝗲𝘅𝘁𝗿𝗮𝗰𝘁 𝗣𝗞/𝗖𝗦</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
     results = []
     charged_card = None
-    last_update = time.perf_counter()
     start_time = time.perf_counter()
     
-    for i, card in enumerate(cards, 1):
-        result = await charge_card_via_api(url, card)
-        elapsed = round(time.perf_counter() - start_time, 2)
-        
-        status = result.get("status", "error")
-        msg_text = result.get("msg", "Unknown error")
-        
-        results.append({"card": card, "status": status, "msg": msg_text, "time": elapsed})
-        
-        # Calculate stats
-        charged = sum(1 for r in results if r['status'] == 'charge')
-        live = sum(1 for r in results if r['status'] == 'live')
-        declined = sum(1 for r in results if r['status'] == 'dead')
-        errors = sum(1 for r in results if r['status'] == 'error')
-        
-        # Update with current card and stats
-        try:
-            await processing_msg.edit_text(
-                f"<blockquote><code>「 𝗖𝗵𝗮𝗿𝗴𝗶𝗻𝗴 」</code></blockquote>\n\n"
-                f"<blockquote>「❃」 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 : <code>{i}/{len(cards)}</code></blockquote>\n\n"
-                f"<blockquote>「❃」 𝗖𝗮𝗿𝗱 : <code>{card}</code>\n"
-                f"「❃」 𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 : <code>{msg_text}</code></blockquote>\n\n"
-                f"<blockquote>「❃」 𝗖𝗵𝗮𝗿𝗴𝗲𝗱 : <code>{charged} ✅</code>\n"
-                f"「❃」 𝗟𝗶𝘃𝗲 : <code>{live} ✅</code>\n"
-                f"「❃」 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 : <code>{declined} ❌</code>\n"
-                f"「❃」 𝗘𝗿𝗿𝗼𝗿𝘀 : <code>{errors} ⚠️</code></blockquote>",
-                parse_mode=ParseMode.HTML
-            )
-        except:
-            pass
-        
-        # Stop if charged
-        if status == "charge":
-            charged_card = results[-1]
-            break
+    try:
+        async with aiohttp.ClientSession() as session:
+            init_data = await init_checkout(pk, cs)
+            
+            if "error" in init_data:
+                await processing_msg.edit_text(
+                    "<blockquote><code>𝗘𝗿𝗿𝗼𝗿 ❌</code></blockquote>\n\n"
+                    f"<blockquote>「❃」 {init_data['error'].get('message', 'Init failed')}</blockquote>",
+                    parse_mode=ParseMode.HTML
+                )
+                return
+            
+            for i, card_str in enumerate(cards, 1):
+                card = parse_card(card_str)
+                
+                if not card:
+                    results.append({"card": card_str, "status": "ERROR", "msg": "Invalid format", "time": 0})
+                    continue
+                
+                result = await charge_card_hybrid(card, pk, cs, init_data, session)
+                
+                status = result.get("status")
+                msg_text = result.get("response")
+                elapsed = result.get("time", 0)
+                
+                results.append({"card": card_str, "status": status, "msg": msg_text, "time": elapsed})
+                
+                # Calculate stats
+                charged = sum(1 for r in results if r['status'] == 'CHARGED')
+                live = sum(1 for r in results if r['status'] == 'LIVE')
+                declined = sum(1 for r in results if r['status'] == 'DECLINED')
+                errors = sum(1 for r in results if r['status'] not in ['CHARGED', 'LIVE', 'DECLINED'])
+                
+                # Update with current card and stats
+                try:
+                    await processing_msg.edit_text(
+                        f"<blockquote><code>「 𝗖𝗵𝗮𝗿𝗴𝗶𝗻𝗴 」</code></blockquote>\n\n"
+                        f"<blockquote>「❃」 𝗣𝗿𝗼𝗴𝗿𝗲𝘀𝘀 : <code>{i}/{len(cards)}</code></blockquote>\n\n"
+                        f"<blockquote>「❃」 𝗖𝗮𝗿𝗱 : <code>{card_str}</code>\n"
+                        f"「❃」 𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 : <code>{msg_text}</code></blockquote>\n\n"
+                        f"<blockquote>「❃」 𝗖𝗵𝗮𝗿𝗴𝗲𝗱 : <code>{charged} ✅</code>\n"
+                        f"「❃」 𝗟𝗶𝘃𝗲 : <code>{live} ✅</code>\n"
+                        f"「❃」 𝗗𝗲𝗰𝗹𝗶𝗻𝗲𝗱 : <code>{declined} ❌</code>\n"
+                        f"「❃」 𝗘𝗿𝗿𝗼𝗿𝘀 : <code>{errors} ⚠️</code></blockquote>",
+                        parse_mode=ParseMode.HTML
+                    )
+                except:
+                    pass
+                
+                # Stop if charged
+                if status == "CHARGED":
+                    charged_card = results[-1]
+                    USER_STATS[user_id]["charged"] += 1
+                    save_stats()
+                    break
+    except Exception as e:
+        logger.error(f"Mass charge error: {e}")
+        await processing_msg.edit_text(
+            "<blockquote><code>𝗘𝗿𝗿𝗼𝗿 ❌</code></blockquote>\n\n"
+            f"<blockquote>「❃」 {str(e)[:100]}</blockquote>",
+            parse_mode=ParseMode.HTML
+        )
+        return
     
     total_time = round(time.perf_counter() - start_time, 2)
+    merchant = checkout_data.get("merchant", "Unknown")
+    price = checkout_data.get("price", "0")
+    currency = checkout_data.get("currency", "USD")
+    product = checkout_data.get("product", "Unknown")
     
     # Build final response
     if len(cards) == 1:
         # Single card response
         r = results[0]
-        merchant = result.get("merchant", "N/A")
-        price = result.get("price", "N/A")
-        product = result.get("product", "N/A")
         
-        if r['status'] == 'charge':
+        if r['status'] == 'CHARGED':
             status_emoji = "✅"
             status_text = "CHARGED"
-        elif r['status'] == 'live':
+        elif r['status'] == 'LIVE':
             status_emoji = "✅"
             status_text = "LIVE"
-        elif r['status'] == 'dead':
+        elif r['status'] == 'DECLINED':
             status_emoji = "❌"
             status_text = "DECLINED"
         else:
             status_emoji = "⚠️"
-            status_text = "ERROR"
+            status_text = r['status'] or "ERROR"
         
-        response = f"<blockquote><code>「 𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲 {price} 」</code></blockquote>\n\n"
+        response = f"<blockquote><code>「 𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲 {price} {currency} 」</code></blockquote>\n\n"
         response += f"<blockquote>「❃」 𝗖𝗮𝗿𝗱 : <code>{r['card']}</code>\n"
         response += f"「❃」 𝗦𝘁𝗮𝘁𝘂𝘀 : <code>{status_text} {status_emoji}</code>\n"
         response += f"「❃」 𝗥𝗲𝘀𝗽𝗼𝗻𝘀𝗲 : <code>{r['msg']}</code></blockquote>\n\n"
@@ -321,8 +371,6 @@ async def co_handler(msg: Message):
         response += f"<blockquote>「❃」 𝗖𝗼𝗺𝗺𝗮𝗻𝗱 : <code>/co</code>\n"
         response += f"「❃」 𝗧𝗶𝗺𝗲 : <code>{total_time}s</code></blockquote>"
     elif charged_card:
-        USER_STATS[user_id]["charged"] += 1
-        save_stats()
         response = f"<blockquote><code>「 𝗦𝘁𝗿𝗶𝗽𝗲 𝗖𝗵𝗮𝗿𝗴𝗲𝗱 ✅ 」</code></blockquote>\n\n"
         response += f"<blockquote>「❃」 𝗖𝗮𝗿𝗱 : <code>{charged_card['card']}</code>\n"
         response += f"「❃」 𝗦𝘁𝗮𝘁𝘂𝘀 : <code>CHARGED ✅</code>\n"
@@ -332,10 +380,10 @@ async def co_handler(msg: Message):
         response += f"<blockquote>「❃」 𝗖𝗼𝗺𝗺𝗮𝗻𝗱 : <code>/co</code>\n"
         response += f"「❃」 𝗧𝗶𝗺𝗲 : <code>{total_time}s</code></blockquote>"
     else:
-        charged = sum(1 for r in results if r['status'] == 'charge')
-        live = sum(1 for r in results if r['status'] == 'live')
-        declined = sum(1 for r in results if r['status'] == 'dead')
-        errors = sum(1 for r in results if r['status'] == 'error')
+        charged = sum(1 for r in results if r['status'] == 'CHARGED')
+        live = sum(1 for r in results if r['status'] == 'LIVE')
+        declined = sum(1 for r in results if r['status'] == 'DECLINED')
+        errors = sum(1 for r in results if r['status'] not in ['CHARGED', 'LIVE', 'DECLINED'])
         
         response = f"<blockquote><code>「 𝗠𝗮𝘀𝘀 𝗖𝗵𝗮𝗿𝗴𝗲 𝗥𝗲𝘀𝘂𝗹𝘁𝘀 」</code></blockquote>\n\n"
         response += f"<blockquote>「❃」 𝗖𝗵𝗮𝗿𝗴𝗲𝗱 : <code>{charged} ✅</code>\n"
